@@ -1,0 +1,4 @@
+node_modules
+dist/assets
+dist/main.js
+.DS_Store
