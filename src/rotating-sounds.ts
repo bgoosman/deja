@@ -1,24 +1,29 @@
+import p5 from './p5'
+
 export class RotatingSounds {
-  constructor(p5) {
-    this.p5 = p5;
+  p: p5;
+  current: number;
+  start: number;
+  sounds: p5.SoundFile[];
+
+  constructor(p: p5) {
+    this.p = p;
     this.sounds = [];
     this.current = 0;
     this.start = 0;
-    this.size = 4;
   }
 
-  setVolume(value) {
+  setVolume(value: number) {
     this.sounds.forEach(sound => sound.setVolume(value))
   }
 
-  addSound(filePath) {
-    console.log(`loading ${filePath}`);
-    this.sounds.push(this.p5.loadSound(filePath));
+  push(sound: p5.SoundFile) {
+    this.sounds.push(sound);
   }
 
   playCurrent() {
     console.log(`playing ${this.getIndex()}`);
-    this.sounds[this.getIndex()].loop();
+    this.sounds[this.getIndex()].play();
   }
 
   stopCurrent() {
@@ -37,7 +42,7 @@ export class RotatingSounds {
   advance() {
     this.stopCurrent();
     this.current++;
-    if (this.current >= this.size) this.current = 0;
+    if (this.current >= this.sounds.length) this.current = 0;
     this.playCurrent();
   }
 
