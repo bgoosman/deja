@@ -4,20 +4,22 @@ import { RotatingSounds } from "./rotating-sounds";
 import { io } from "socket.io-client";
 import { Clip } from "./clip";
 import { SoundMix } from "./sound-mix";
-import { VideoFile } from "./video-file";
+import { Timeline } from "./timeline";
+import * as math from "./math";
 
-new p5((p: p5) => {
+new p5((p5js: p5) => {
   let rotating: RotatingSounds;
   let ambience: SoundMix;
 
   let socket = io();
 
-  let running = true;
+  let running = false;
   let recording = false;
   let playing = false;
   let freshClip = false;
 
-  let ratio = 16 / 9;
+  // let ratio = 16 / 9;
+  let ratio = 4 / 3;
   let w = 640;
   let h = w / ratio;
 
@@ -28,27 +30,29 @@ new p5((p: p5) => {
   const CLIP_SIZE = CLIP_LENGTH * FRAME_RATE;
   let buffer: p5.Image[] = [];
   buffer.length = CLIP_SIZE;
+  let recordingClip: Clip = new Clip(CLIP_SIZE, FRAME_RATE);
+  let playingClip: Clip = new Clip(CLIP_SIZE, FRAME_RATE);
 
-  let minDelta = 15000;
+  let minDelta = 5000;
   let maxDelta = 20000;
   let scheduledPlayTime: number;
   let capture: p5.Element;
+
+  let timeline: Timeline = new Timeline(p5js);
+
+  let rhythmIndex = 0;
 
   function createCapture() {
     if (capture) {
       capture.remove();
     }
-    capture = p.createCapture(p.VIDEO);
+    capture = p5js.createCapture(p5js.VIDEO);
     capture.size(w, h);
     capture.hide();
   }
 
   function render(frame: p5.Image) {
-    p.image(frame, 0, 0, w, h);
-  }
-
-  function scaleNumber(v: number, vmin: number, vmax: number, tmin: number, tmax: number) {
-    return tmin + ((v - vmin) / (vmax - vmin)) * (tmax - tmin);
+    if (frame) p5js.image(frame, 0, 0, w, h);
   }
 
   function getCameraFrame() {
@@ -75,109 +79,124 @@ new p5((p: p5) => {
 
   function archiveClip() {
     console.log("archiving clip");
-    // let writer = createWriter('newFile.clip');
-    // let data = buffer.map(image => image.canvas.toDataURL());
-    // clips.push(buffer);
-    // buffer = [];
-    // let max = 1;
-    // let data = buffer.slice(0, max).map(image => image.drawingContext.getImageData(0, 0, w, h).data);
-    // let data = [buffer[0].canvas.toDataURL()];
-    // let data = [buffer[0].drawingContext.getImageData(0, 0, w, h).data.buffer]
-    // data = data.slice(0, 1);
-    // socket.emit('image', data);
-    // socket.emit('image', { image: true, buffer: data[0] });
-    // writer.write(data)
-    // writer.close()
   }
 
   function loadSound(path: string) {
-    return ((p as any) as p5.SoundFile).loadSound(path);
+    return ((p5js as any) as p5.SoundFile).loadSound(path);
   }
 
-  p.preload = () => {
+  p5js.preload = () => {
     console.log("preloading");
-    ambience = new SoundMix(p);
+    ambience = new SoundMix(p5js);
     ["dragging stick.wav"].forEach((file) => {
       ambience.push(loadSound(`assets/ambience/${file}`));
     });
 
-    rotating = new RotatingSounds(p);
+    rotating = new RotatingSounds(p5js);
     [
+      "Office Space Printer Wake Up From Sleep Mode XY.wav",
+      "40_FallingSun_SH101_E1-1LSN.wav",
+      "63_OneShots_SH101_D3-LKO7.wav",
+      "70_OneShots_SH101_A3-PVMV.wav",
+      "75_OneShots_SH101_D4-LHAN.wav",
+      "76_OneShots_SH101_E4-CKI9.wav",
+      "RulerTwang-Clean.wav",
+      "SFM-MicroMoog6-33.wav",
+      "SFM-MicroMoog6-45.wav",
+      "SFM-MicroMoog6-59.wav",
       // "36734__sagetyrtle__citystreet3.wav",
       // "413549__inspectorj__ambience-creepy-wind-a.wav",
       // "scrubby brush.wav",
       // "silence.wav",
-      "airplane scrub.m4a",
-      "laundry loud.m4a",
-      "machine belt.m4a",
-      "walking.wav",
-      "book.m4a",
-      "door knob.m4a",
-      "necklace.m4a",
-      "shoe laces.m4a",
-      "stool growl.m4a",
-      "ukulele perc.m4a",
+      // "airplane scrub.m4a",
+      "bike horn.wav",
+      // "laundry loud.m4a",
+      // "machine belt.m4a",
+      // "walking.wav",
+      "kids say woah.wav",
+      // "book.m4a",
+      // "door knob.m4a",
+      // "necklace.m4a",
+      // "shoe laces.m4a",
+      // "stool growl.m4a",
+      // "rim shot.wav",
+      // "applause.wav",
+      // "ukulele perc.m4a",
     ].forEach((file) => {
       rotating.push(loadSound(`assets/rotating/${file}`));
     });
-  };
-
-  p.setup = () => {
-    console.log("setup");
-    p.createCanvas(w, h);
-    createCapture();
     rotating.setVolume(0);
   };
 
-  p.draw = () => {
+  p5js.setup = () => {
+    console.log("setup");
+    createCapture();
+    p5js.createCanvas(w, h);
+  };
+
+  p5js.draw = () => {
     if (running) {
-      let time = p.millis();
-      if (recording) {
-        if (!clip) clip = new Clip(CLIP_SIZE);
-        let frame = getCameraFrame();
-        render(frame);
-        clip.push(frame);
-        if (clip.isFull()) {
-          console.log("done recording");
-          scheduledPlayTime = time + scaleNumber(Math.random(), 0, 1, minDelta, maxDelta);
-          console.log(`scheduled clip to play at ${scheduledPlayTime}`);
-          freshClip = true;
-          recording = false;
-        }
-      } else if (playing) {
-        render(clip.get());
-        clip.advance();
-        if (clip.isDone()) {
-          console.log("done playing");
-          clip.reset();
-          playing = false;
-        }
+      const events = timeline.getAllExpiredEvents();
+      events.forEach((event) => event.fn());
+
+      let frame = getCameraFrame();
+      if (playing) {
+        render(playingClip.get());
+        playingClip.advance();
       } else {
-        let frame = getCameraFrame();
         render(frame);
-        if (freshClip && time >= scheduledPlayTime) {
-          freshClip = false;
-          archiveClip();
-          playClip();
-        } else if (!freshClip) {
-          recordClip();
+        recordingClip.push(frame);
+        if (recordingClip.isFull()) {
+          playingClip = recordingClip;
+          console.log("done recording");
+          const rhythms = [
+            [3, 1, 0.25, 0.25, 0.5, 5],
+            [0.5, 0.5, 2, 0.5, 0.75, 2],
+            [2, 1, 3, 0.25, 1, 0.25, 3],
+          ]
+          const millis = rhythms[rhythmIndex++].map(math.secondsToMillis).reduce((abs, rel) => {
+            const millis = abs + rel;
+            console.log("scheduling", millis);
+            timeline.schedule(millis, () => {
+              console.log(millis, "advancing...");
+              rotating.advance();
+              playingClip.skipToRandom();
+            });
+            return abs + rel;
+          }, 0);
+          if (rhythmIndex == rhythms.length) rhythmIndex = 0;
+          console.log("after millis", millis);
+          timeline.schedule(millis, () => {
+            console.log("recording again");
+            recordingClip.reset();
+            playing = false;
+          });
+          playing = true;
         }
       }
     }
   };
 
-  p.keyPressed = () => {
-    const keyCode = p.keyCode;
+  p5js.keyPressed = () => {
+    const keyCode = p5js.keyCode;
     if (keyCode === 82 /* r */) {
       createCapture();
     } else if (keyCode === 80 /* p */) {
       playClip();
     } else if (keyCode === 78 /* n */) {
-      rotating.advance();
+      [3, 1, 0.25, 0.25, 0.25, 6].map(math.secondsToMillis).reduce((abs, rel) => {
+        const millis = abs + rel;
+        timeline.schedule(millis, () => {
+          console.log(millis, "advancing...");
+          rotating.advance();
+        });
+        return abs + rel;
+      }, 0);
     } else if (keyCode === 71 /* g */) {
-      running = true;
     } else if (keyCode === 83 /* s */) {
+      running = true;
       playSounds();
+      recording = true;
     } else if (keyCode === 70 /* f */) {
       rotating.shift();
     } else if (keyCode == 32 /* space */) {

@@ -5,16 +5,21 @@ export class Clip {
   playIndex: number;
   recordIndex: number;
   maxSize: number;
+  frameRate: number;
 
-  constructor(maxSize: number) {
+  constructor(maxSize: number, frameRate: number) {
     this.buffer = [];
     this.maxSize = maxSize;
     this.playIndex = 0;
     this.recordIndex = 0;
+    this.frameRate = frameRate;
   }
 
   advance() {
     this.playIndex++;
+    if (this.isDone()) {
+      this.playIndex = 0;
+    }
   }
 
   isDone(): boolean {
@@ -38,5 +43,15 @@ export class Clip {
     this.buffer = [];
     this.playIndex = 0;
     this.recordIndex = 0;
+  }
+
+  skipToMillis(millis: number): void {
+    this.playIndex = Math.floor(this.frameRate * (millis / 1000.0));
+    console.log(`skipping to ${this.playIndex} / ${this.buffer.length}`)
+  }
+
+  skipToRandom(): void {
+    this.playIndex = Math.floor(Math.random() * this.buffer.length);
+    console.log(`skipping to ${this.playIndex} / ${this.buffer.length}`)
   }
 }
