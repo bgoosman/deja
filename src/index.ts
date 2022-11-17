@@ -11,8 +11,6 @@ new p5((p5js: p5) => {
   let rotating: RotatingSounds;
   let ambience: SoundMix;
 
-  let socket = io();
-
   let running = false;
   let recording = false;
   let playing = false;
@@ -33,9 +31,6 @@ new p5((p5js: p5) => {
   let recordingClip: Clip = new Clip(CLIP_SIZE, FRAME_RATE);
   let playingClip: Clip = new Clip(CLIP_SIZE, FRAME_RATE);
 
-  let minDelta = 5000;
-  let maxDelta = 20000;
-  let scheduledPlayTime: number;
   let capture: p5.Element;
 
   let timeline: Timeline = new Timeline(p5js);
@@ -98,6 +93,7 @@ new p5((p5js: p5) => {
       "40_FallingSun_SH101_E1-1LSN.wav",
       "63_OneShots_SH101_D3-LKO7.wav",
       "70_OneShots_SH101_A3-PVMV.wav",
+      "VCV Yarrow 7-1-1.wav",
       "75_OneShots_SH101_D4-LHAN.wav",
       "76_OneShots_SH101_E4-CKI9.wav",
       "RulerTwang-Clean.wav",
